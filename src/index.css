@@ -349,22 +349,38 @@ body {
   color: var(--accent);
 }
 
-/* Page area — min-height: 0 es la clave para scroll en iOS Safari con flex */
+/* Page area — patrón "doble flex + min-height:0" para scroll en iOS Safari */
 .page-area {
   flex: 1;
-  min-height: 0;      /* FIX iOS Safari: sin esto flex:1 no calcula altura */
-  position: relative;
+  min-height: 0;          /* sin esto flex:1 no acota la altura en Safari */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
+
+/*
+  page-content = el VIEWPORT de scroll.
+  NO debe ser también flex ni tener padding —
+  eso rompe el scroll en iOS (el motor no detecta overflow).
+  El layout (flex-col, gap, padding) va en un div hijo .page-inner.
+*/
 .page-content {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  overflow-y: scroll;            /* scroll (no auto) funciona mejor en iOS */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }
 .page-content::-webkit-scrollbar { display: none; }
+
+/* Contenedor de layout dentro de page-content */
+.page-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
 
 /* Section header */
 .section-header {

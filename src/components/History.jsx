@@ -81,7 +81,7 @@ export default function History({ transactions, categories, onDelete, onEdit }) 
         />
       )}
 
-      <div className="page-content" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="page-content"><div className="page-inner">
 
         {/* Month chips */}
         <div style={{ overflowX: 'auto', paddingBottom: '4px' }}>
@@ -192,8 +192,7 @@ export default function History({ transactions, categories, onDelete, onEdit }) 
           ))
         )}
 
-        <div style={{ height: '8px' }} />
-      </div>
+      </div></div>
     </>
   );
 }

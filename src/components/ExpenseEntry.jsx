@@ -93,7 +93,7 @@ export default function ExpenseEntry({ categories, onAdd }) {
   const numKeys = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
 
   return (
-    <div className="page-content" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+    <div className="page-content"><div className="page-inner" style={{ gap: '10px' }}>
 
       {/* Type toggle */}
       <div style={{ display: 'flex', background: 'var(--bg-card)', borderRadius: '14px', padding: '3px', gap: '3px' }}>
@@ -224,8 +224,7 @@ export default function ExpenseEntry({ categories, onAdd }) {
           : 'Selecciona monto y categoría'}
       </button>
 
-      <div style={{ height: '8px' }} />
-    </div>
+    </div></div>
   );
 }
 
