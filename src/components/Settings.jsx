@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { parseCSV } from '../utils/csvParser';
+import { parsePDF } from '../utils/pdfParser';
 import { categorizeTxns } from '../utils/claudeApi';
 import { getCategoryById, DEFAULT_CATEGORIES, saveCategories } from '../utils/categories';
 import { formatMXN, genId, todayStr } from '../utils/format';
@@ -7,11 +8,12 @@ import { formatMXN, genId, todayStr } from '../utils/format';
 export default function Settings({ categories, setCategories, onImportTransactions }) {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('finanzas_claude_key') || '');
   const [apiKeySaved, setApiKeySaved] = useState(false);
-  const [csvRows, setCsvRows] = useState(null);
-  const [csvError, setCsvError] = useState('');
+  const [importRows, setImportRows] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [parsing, setParsing] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
   const [reviewRows, setReviewRows] = useState(null);
-  const [importing, setImporting] = useState(false);
   const [editingCat, setEditingCat] = useState(null);
   const [newCatName, setNewCatName] = useState('');
   const [newCatEmoji, setNewCatEmoji] = useState('');
@@ -26,30 +28,39 @@ export default function Settings({ categories, setCategories, onImportTransactio
     setTimeout(() => setApiKeySaved(false), 2000);
   }
 
-  async function handleCSVFile(e) {
+  async function handleFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvError('');
-    setCsvRows(null);
+    setImportError('');
+    setImportRows(null);
     setReviewRows(null);
+    setParsing(true);
     try {
-      const text = await file.text();
-      const rows = parseCSV(text);
-      setCsvRows(rows);
+      let rows;
+      const isPDF = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
+      if (isPDF) {
+        rows = await parsePDF(file);
+      } else {
+        const text = await file.text();
+        rows = parseCSV(text);
+      }
+      setImportRows(rows);
     } catch (err) {
-      setCsvError(err.message);
+      setImportError(err.message);
+    } finally {
+      setParsing(false);
     }
     e.target.value = '';
   }
 
   async function handleAutoCateg() {
     const key = localStorage.getItem('finanzas_claude_key');
-    if (!key) { setCsvError('Configura tu clave de Claude primero.'); return; }
-    if (!csvRows) return;
+    if (!key) { setImportError('Configura tu clave de Claude primero.'); return; }
+    if (!importRows) return;
     setCategorizing(true);
     try {
-      const results = await categorizeTxns(key, csvRows, categories);
-      const review = csvRows.map((row, i) => ({
+      const results = await categorizeTxns(key, importRows, categories);
+      const review = importRows.map((row, i) => ({
         ...row,
         categoryId: results[i]?.categoryId || 'otro',
         confidence: results[i]?.confidence || 0,
@@ -57,17 +68,17 @@ export default function Settings({ categories, setCategories, onImportTransactio
       }));
       setReviewRows(review);
     } catch (err) {
-      setCsvError(err.message || 'Error al categorizar');
+      setImportError(err.message || 'Error al categorizar');
     } finally {
       setCategorizing(false);
     }
   }
 
   function manualCateg() {
-    if (!csvRows) return;
-    const review = csvRows.map((row) => ({
+    if (!importRows) return;
+    const review = importRows.map((row) => ({
       ...row,
-      categoryId: 'otro',
+      categoryId: row.isIncome ? 'ingresos_imss' : 'otro',
       confidence: null,
       rowId: genId(),
     }));
@@ -94,7 +105,7 @@ export default function Settings({ categories, setCategories, onImportTransactio
       source: 'csv',
     }));
     onImportTransactions(txns);
-    setCsvRows(null);
+    setImportRows(null);
     setReviewRows(null);
     setImporting(false);
   }
@@ -169,50 +180,66 @@ export default function Settings({ categories, setCategories, onImportTransactio
         </button>
       </div>
 
-      {/* CSV Import */}
+      {/* PDF / CSV Import */}
       <div className="card">
-        <div className="section-header" style={{ marginBottom: '10px' }}>📄 Importar CSV bancario</div>
+        <div className="section-header" style={{ marginBottom: '10px' }}>📄 Importar estado de cuenta</div>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: 1.5 }}>
-          Sube el estado de cuenta en CSV. Claude puede auto-categorizar cada movimiento.
+          Sube tu estado de cuenta en <strong style={{ color: 'var(--text-primary)' }}>PDF o CSV</strong>. Claude puede auto-categorizar cada movimiento.
         </div>
 
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".pdf,.csv,application/pdf,text/csv"
           style={{ display: 'none' }}
-          onChange={handleCSVFile}
+          onChange={handleFile}
         />
         <button
           style={{
             background: 'var(--bg-primary)', color: 'var(--text-primary)',
             border: '1px solid var(--border)', borderRadius: '10px',
             padding: '10px 16px', fontWeight: 600, fontSize: '0.85rem',
-            cursor: 'pointer', width: '100%', minHeight: '44px',
+            cursor: parsing ? 'not-allowed' : 'pointer', width: '100%', minHeight: '48px',
+            opacity: parsing ? 0.7 : 1,
           }}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => !parsing && fileRef.current?.click()}
           type="button"
         >
-          📂 Seleccionar archivo CSV
+          {parsing ? '⏳ Leyendo archivo…' : '📂 Seleccionar PDF o CSV'}
         </button>
 
-        {csvError && (
-          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '10px', marginTop: '10px', fontSize: '0.8rem', color: '#F87171' }}>
-            {csvError}
+        {/* Format badges */}
+        <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
+          {['PDF', 'CSV'].map((fmt) => (
+            <span key={fmt} style={{
+              fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em',
+              background: 'var(--accent-glow)', color: 'var(--accent)',
+              borderRadius: '4px', padding: '2px 7px',
+            }}>{fmt}</span>
+          ))}
+          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', lineHeight: '20px' }}>
+            BBVA · Banamex · Santander · HSBC · Banorte
+          </span>
+        </div>
+
+        {importError && (
+          <div style={{ background: 'rgba(255,107,107,0.1)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: '10px', padding: '10px', marginTop: '10px', fontSize: '0.8rem', color: '#FF8080' }}>
+            {importError}
           </div>
         )}
 
-        {csvRows && !reviewRows && (
+        {importRows && !reviewRows && (
           <div style={{ marginTop: '12px' }}>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
-              {csvRows.length} transacciones encontradas.
+              {importRows.length} transacciones encontradas.
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 style={{
                   flex: 1, background: 'var(--accent)', color: '#000',
                   border: 'none', borderRadius: '10px', padding: '10px',
-                  fontWeight: 700, fontSize: '0.82rem', cursor: categorizing ? 'not-allowed' : 'pointer',
+                  fontWeight: 700, fontSize: '0.82rem',
+                  cursor: categorizing ? 'not-allowed' : 'pointer',
                   opacity: categorizing ? 0.6 : 1, minHeight: '44px',
                 }}
                 onClick={handleAutoCateg}
@@ -244,46 +271,43 @@ export default function Settings({ categories, setCategories, onImportTransactio
               Revisa y ajusta las categorías antes de importar:
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
-              {reviewRows.map((row) => {
-                const cat = getCategoryById(row.categoryId, categories);
-                return (
-                  <div key={row.rowId} className="card" style={{ padding: '10px 12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <div style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, paddingRight: '8px' }}>
-                        {row.description}
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
-                        <span className="mono" style={{ fontSize: '0.78rem', fontWeight: 700, color: row.isIncome ? 'var(--income-color)' : 'var(--text-primary)' }}>
-                          {formatMXN(row.amount)}
-                        </span>
-                        <button
-                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
-                          onClick={() => removeReviewRow(row.rowId)}
-                          type="button"
-                        >✕</button>
-                      </div>
+              {reviewRows.map((row) => (
+                <div key={row.rowId} className="card" style={{ padding: '10px 12px', background: 'var(--bg-primary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, paddingRight: '8px' }}>
+                      {row.description}
                     </div>
-                    <select
-                      style={{
-                        background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                        border: '1px solid var(--border)', borderRadius: '8px',
-                        padding: '6px 8px', fontSize: '0.78rem', width: '100%',
-                      }}
-                      value={row.categoryId}
-                      onChange={(e) => updateReviewCat(row.rowId, e.target.value)}
-                    >
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
-                      ))}
-                    </select>
-                    {row.confidence !== null && (
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                        Confianza: {Math.round((row.confidence || 0) * 100)}%
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+                      <span className="mono" style={{ fontSize: '0.78rem', fontWeight: 700, color: row.isIncome ? 'var(--income-color)' : 'var(--text-primary)' }}>
+                        {formatMXN(row.amount)}
+                      </span>
+                      <button
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
+                        onClick={() => removeReviewRow(row.rowId)}
+                        type="button"
+                      >✕</button>
+                    </div>
                   </div>
-                );
-              })}
+                  <select
+                    style={{
+                      background: 'var(--bg-card)', color: 'var(--text-primary)',
+                      border: '1px solid var(--border)', borderRadius: '8px',
+                      padding: '6px 8px', fontSize: '0.78rem', width: '100%',
+                    }}
+                    value={row.categoryId}
+                    onChange={(e) => updateReviewCat(row.rowId, e.target.value)}
+                  >
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                    ))}
+                  </select>
+                  {row.confidence !== null && (
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      Confianza: {Math.round((row.confidence || 0) * 100)}%
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
             <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
               <button
@@ -305,7 +329,7 @@ export default function Settings({ categories, setCategories, onImportTransactio
                   padding: '12px', fontWeight: 600, fontSize: '0.82rem',
                   cursor: 'pointer', minHeight: '44px',
                 }}
-                onClick={() => { setCsvRows(null); setReviewRows(null); }}
+                onClick={() => { setImportRows(null); setReviewRows(null); }}
                 type="button"
               >
                 Cancelar
@@ -365,7 +389,7 @@ export default function Settings({ categories, setCategories, onImportTransactio
                   <span style={{ fontSize: '1.2rem' }}>{cat.emoji}</span>
                   <span style={{ flex: 1, fontSize: '0.85rem' }}>{cat.name}</span>
                   <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => startEdit(cat)} type="button">Editar</button>
-                  <button style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => deleteCat(cat.id)} type="button">✕</button>
+                  <button style={{ background: 'none', border: 'none', color: '#FF6B6B', cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => deleteCat(cat.id)} type="button">✕</button>
                 </>
               )}
             </div>

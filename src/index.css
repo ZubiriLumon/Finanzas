@@ -2,39 +2,42 @@
 
 /* CSS custom properties for dynamic theme */
 :root {
-  --bg-primary: #0A1628;
-  --bg-secondary: #0F1F3D;
-  --bg-card: #162040;
-  --accent: #22C55E;
-  --accent-muted: #16A34A;
-  --accent-glow: rgba(34, 197, 94, 0.25);
-  --text-primary: #F1F5F9;
-  --text-muted: #94A3B8;
-  --border: rgba(255,255,255,0.08);
-  --health-bar: #22C55E;
-  --danger: #F97316;
-  --income-color: #22C55E;
-  --expense-color: #F97316;
+  /* Healthy — grafito profundo + teal/cian */
+  --bg-primary: #0E0F14;
+  --bg-secondary: #16181F;
+  --bg-card: #1E2028;
+  --accent: #00C9A7;
+  --accent-muted: #00A88C;
+  --accent-glow: rgba(0, 201, 167, 0.18);
+  --text-primary: #F0F2F5;
+  --text-muted: #8B90A0;
+  --border: rgba(255,255,255,0.07);
+  --health-bar: #00C9A7;
+  --danger: #FF6B6B;
+  --income-color: #00C9A7;
+  --expense-color: #FF8C42;
 }
 
 [data-theme="okay"] {
-  --bg-primary: #0F172A;
-  --bg-secondary: #1E293B;
-  --bg-card: #1E293B;
-  --accent: #F59E0B;
-  --accent-muted: #D97706;
-  --accent-glow: rgba(245, 158, 11, 0.25);
-  --health-bar: #F59E0B;
+  /* Okay — grafito + ámbar cálido */
+  --bg-primary: #111008;
+  --bg-secondary: #1A1810;
+  --bg-card: #22201A;
+  --accent: #F5A623;
+  --accent-muted: #D4901F;
+  --accent-glow: rgba(245, 166, 35, 0.16);
+  --health-bar: #F5A623;
 }
 
 [data-theme="stressed"] {
-  --bg-primary: #1A0A0A;
-  --bg-secondary: #2D1111;
-  --bg-card: #2D1111;
-  --accent: #F97316;
-  --accent-muted: #EA580C;
-  --accent-glow: rgba(249, 115, 22, 0.25);
-  --health-bar: #EF4444;
+  /* Stressed — grafito + rojo coral, sin alarmar */
+  --bg-primary: #120E0E;
+  --bg-secondary: #1C1515;
+  --bg-card: #231919;
+  --accent: #FF6B6B;
+  --accent-muted: #E05555;
+  --accent-glow: rgba(255, 107, 107, 0.16);
+  --health-bar: #FF6B6B;
 }
 
 *, *::before, *::after {

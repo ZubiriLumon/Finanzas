@@ -3,11 +3,13 @@ import { BarChart, LineChart } from './AnimatedChart';
 import { formatMXN, currentMonthKey, monthLabel } from '../utils/format';
 import { getCategoryById } from '../utils/categories';
 import { getMonthlyInsights } from '../utils/claudeApi';
+import MonthReport from './MonthReport';
 
 export default function Dashboard({ transactions, categories }) {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [insights, setInsights] = useState('');
   const [insightsError, setInsightsError] = useState('');
+  const [showReport, setShowReport] = useState(false);
 
   const key = currentMonthKey();
 
@@ -103,16 +105,38 @@ export default function Dashboard({ transactions, categories }) {
   const healthColor = healthScore > 0.3 ? 'var(--income-color)' : healthScore > 0.1 ? '#F59E0B' : '#EF4444';
 
   return (
+    <>
+    {showReport && (
+      <MonthReport
+        transactions={transactions}
+        categories={categories}
+        onClose={() => setShowReport(false)}
+      />
+    )}
     <div className="page-content" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-      {/* Month + health */}
+      {/* Month + health + corte button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Mes actual</div>
           <div style={{ fontWeight: 700, fontSize: '1rem' }}>{monthLabel(key)}</div>
         </div>
-        <div style={{ background: `${healthColor}22`, borderRadius: '20px', padding: '4px 12px', border: `1px solid ${healthColor}66` }}>
-          <span style={{ color: healthColor, fontWeight: 700, fontSize: '0.82rem' }}>{healthLabel}</span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button
+            style={{
+              background: 'var(--bg-card)', border: '1px solid var(--border)',
+              color: 'var(--text-muted)', borderRadius: '20px', padding: '4px 12px',
+              fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '4px',
+            }}
+            onClick={() => setShowReport(true)}
+            type="button"
+          >
+            ✂️ Corte
+          </button>
+          <div style={{ background: `${healthColor}22`, borderRadius: '20px', padding: '4px 12px', border: `1px solid ${healthColor}66` }}>
+            <span style={{ color: healthColor, fontWeight: 700, fontSize: '0.82rem' }}>{healthLabel}</span>
+          </div>
         </div>
       </div>
 
@@ -230,5 +254,6 @@ export default function Dashboard({ transactions, categories }) {
 
       <div style={{ height: '8px' }} />
     </div>
+    </>
   );
 }

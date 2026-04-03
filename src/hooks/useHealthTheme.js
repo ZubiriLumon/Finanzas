@@ -32,7 +32,7 @@ export function useHealthTheme(transactions, categories) {
     document.documentElement.setAttribute('data-theme', themeMap[theme]);
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       'content',
-      theme === 'stressed' ? '#1A0A0A' : theme === 'okay' ? '#0F172A' : '#0A1628'
+      theme === 'stressed' ? '#120E0E' : theme === 'okay' ? '#111008' : '#0E0F14'
     );
   }, [theme]);
 
