@@ -4,6 +4,7 @@ import { parsePDF } from '../utils/pdfParser';
 import { categorizeTxns } from '../utils/claudeApi';
 import { getCategoryById, DEFAULT_CATEGORIES, saveCategories } from '../utils/categories';
 import { formatMXN, genId, todayStr } from '../utils/format';
+import { getBudgets, saveBudgets } from '../utils/budgets';
 
 export default function Settings({ categories, setCategories, onImportTransactions }) {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('finanzas_claude_key') || '');
@@ -20,7 +21,16 @@ export default function Settings({ categories, setCategories, onImportTransactio
   const [showAddCat, setShowAddCat] = useState(false);
   const [addName, setAddName] = useState('');
   const [addEmoji, setAddEmoji] = useState('');
+  const [budgets, setBudgetsState] = useState(getBudgets);
   const fileRef = useRef(null);
+
+  function updateBudget(catId, val) {
+    const n = parseFloat(val) || 0;
+    const updated = { ...budgets, [catId]: n > 0 ? n : undefined };
+    if (!updated[catId]) delete updated[catId];
+    setBudgetsState(updated);
+    saveBudgets(updated);
+  }
 
   function saveApiKey() {
     localStorage.setItem('finanzas_claude_key', apiKey.trim());
@@ -392,6 +402,39 @@ export default function Settings({ categories, setCategories, onImportTransactio
                   <button style={{ background: 'none', border: 'none', color: '#FF6B6B', cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px' }} onClick={() => deleteCat(cat.id)} type="button">✕</button>
                 </>
               )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Budget goals */}
+      <div className="card">
+        <div className="section-header" style={{ marginBottom: '4px' }}>🎯 Presupuesto mensual</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
+          Define un límite por categoría. Se muestra como barra de progreso en el Dashboard.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {categories.filter((c) => c.type === 'expense' || c.type === 'both').map((cat) => (
+            <div key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '1.1rem', width: '24px', textAlign: 'center' }}>{cat.emoji}</span>
+              <span style={{ flex: 1, fontSize: '0.83rem' }}>{cat.name}</span>
+              <div style={{ position: 'relative', width: '110px' }}>
+                <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.8rem', pointerEvents: 'none' }}>$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="100"
+                  placeholder="Sin límite"
+                  value={budgets[cat.id] || ''}
+                  onChange={(e) => updateBudget(cat.id, e.target.value)}
+                  style={{
+                    background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                    borderRadius: '8px', color: 'var(--text-primary)',
+                    padding: '7px 8px 7px 20px', fontSize: '0.82rem', width: '100%',
+                    outline: 'none',
+                  }}
+                />
+              </div>
             </div>
           ))}
         </div>

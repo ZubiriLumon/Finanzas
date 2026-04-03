@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react';
 import { currentMonthKey } from '../utils/format';
-import { getCategoryById } from '../utils/categories';
 
 export function useHealthTheme(transactions, categories) {
   const { score, theme, totalIncome, totalExpenses } = useMemo(() => {
@@ -10,12 +9,8 @@ export function useHealthTheme(transactions, categories) {
     let income = 0;
     let expenses = 0;
     monthTxns.forEach((t) => {
-      const cat = getCategoryById(t.categoryId, categories);
-      if (cat.type === 'income') {
-        income += t.amount;
-      } else {
-        expenses += t.amount;
-      }
+      if (t.type === 'income') income += t.amount;
+      else expenses += t.amount;
     });
 
     const score = income > 0 ? (income - expenses) / income : expenses > 0 ? -1 : 0;
@@ -25,7 +20,7 @@ export function useHealthTheme(transactions, categories) {
     else if (score < 0.3) theme = 'okay';
 
     return { score, theme, totalIncome: income, totalExpenses: expenses };
-  }, [transactions, categories]);
+  }, [transactions]);
 
   useEffect(() => {
     const themeMap = { healthy: '', okay: 'okay', stressed: 'stressed' };
@@ -36,7 +31,6 @@ export function useHealthTheme(transactions, categories) {
     );
   }, [theme]);
 
-  // Health bar width as a percentage (clamped)
   const barWidth = Math.max(5, Math.min(100, Math.round(Math.max(0, score) * 100)));
 
   return { score, theme, barWidth, totalIncome, totalExpenses };
