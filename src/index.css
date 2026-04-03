@@ -45,11 +45,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body, #root {
+html, body {
   height: 100%;
   height: 100dvh;
   overflow: hidden;
+}
+
+/* touch-action solo en elementos interactivos, NO en el root
+   (en iOS poner touch-action: manipulation en el root rompe el scroll) */
+button, a, input[type="button"], input[type="submit"], [role="button"] {
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -210,6 +216,10 @@ body {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) scale(0.85) translateY(-8px); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1)    translateY(0); }
+}
 @keyframes slideInRight {
   from { opacity: 0; transform: translateX(24px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -282,7 +292,7 @@ body {
   border-radius: 16px;
   padding: 16px;
   position: relative;
-  overflow: hidden;
+  /* sin overflow:hidden — deja que el contenido interno haga scroll */
 }
 /* Subtle top edge highlight */
 .card::before {
@@ -339,19 +349,20 @@ body {
   color: var(--accent);
 }
 
-/* Page area */
+/* Page area — min-height: 0 es la clave para scroll en iOS Safari con flex */
 .page-area {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;      /* FIX iOS Safari: sin esto flex:1 no calcula altura */
   position: relative;
+  overflow: hidden;
 }
 .page-content {
   position: absolute;
-  inset: 0;
-  overflow-y: auto;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow-y: scroll;            /* scroll (no auto) funciona mejor en iOS */
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
 }
 .page-content::-webkit-scrollbar { display: none; }
 

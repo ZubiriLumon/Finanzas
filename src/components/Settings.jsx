@@ -106,14 +106,22 @@ export default function Settings({ categories, setCategories, onImportTransactio
   function confirmImport() {
     if (!reviewRows) return;
     setImporting(true);
-    const txns = reviewRows.map((r) => ({
-      id: genId(),
-      date: r.date || todayStr(),
-      amount: r.amount,
-      categoryId: r.categoryId,
-      note: r.description,
-      source: 'csv',
-    }));
+    const txns = reviewRows.map((r) => {
+      const cat = getCategoryById(r.categoryId, categories);
+      // Determinar type: primero por categoría, luego por heurística del parser
+      const type = cat.type === 'income' ? 'income'
+                 : cat.type === 'expense' ? 'expense'
+                 : (r.isIncome ? 'income' : 'expense');
+      return {
+        id: genId(),
+        date: r.date || todayStr(),
+        amount: r.amount,
+        categoryId: r.categoryId,
+        note: r.description,
+        source: 'csv',
+        type,
+      };
+    });
     onImportTransactions(txns);
     setImportRows(null);
     setReviewRows(null);

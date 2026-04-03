@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ExpenseEntry from './components/ExpenseEntry';
 import Dashboard from './components/Dashboard';
 import History from './components/History';
@@ -6,6 +6,9 @@ import Settings from './components/Settings';
 import { useFinanceData } from './hooks/useFinanceData';
 import { useHealthTheme } from './hooks/useHealthTheme';
 import { getCategories, saveCategories } from './utils/categories';
+import { unlockAudio } from './hooks/useSensoryFeedback';
+import { getCategoryById } from './utils/categories';
+import { formatMXN } from './utils/format';
 
 const TABS = [
   { id: 'entry',     icon: '➕', label: 'Registrar' },
@@ -17,8 +20,33 @@ const TABS = [
 export default function App() {
   const [activeTab, setActiveTab] = useState('entry');
   const [categories, setCategories] = useState(getCategories);
+  const [toast, setToast] = useState(null); // { msg, isIncome }
   const { transactions, addTransaction, addTransactions, editTransaction, deleteTransaction } = useFinanceData();
   const { barWidth } = useHealthTheme(transactions, categories);
+
+  // Desbloquear Web Audio API en el primer toque del usuario (requerido en iOS Safari)
+  useEffect(() => {
+    const handler = () => { unlockAudio(); };
+    document.addEventListener('touchstart', handler, { once: true, passive: true });
+    document.addEventListener('mousedown',  handler, { once: true });
+    return () => {
+      document.removeEventListener('touchstart', handler);
+      document.removeEventListener('mousedown',  handler);
+    };
+  }, []);
+
+  const showToast = useCallback((txn) => {
+    const cat = getCategoryById(txn.categoryId, categories);
+    const isIncome = txn.type === 'income';
+    const msg = `${cat.emoji} ${isIncome ? '+' : '−'}${formatMXN(txn.amount)} registrado`;
+    setToast({ msg, isIncome });
+    setTimeout(() => setToast(null), 2200);
+  }, [categories]);
+
+  function handleAdd(txnData) {
+    const saved = addTransaction(txnData);
+    showToast({ ...txnData, ...saved });
+  }
 
   function handleImport(txns) {
     addTransactions(txns);
@@ -51,10 +79,34 @@ export default function App() {
         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Chris &amp; Perla</div>
       </div>
 
+      {/* Toast de confirmación */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '60px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 300,
+          background: toast.isIncome ? 'var(--income-color)' : 'var(--bg-card)',
+          color: toast.isIncome ? '#000' : 'var(--text-primary)',
+          border: toast.isIncome ? 'none' : '1px solid var(--border)',
+          borderRadius: '24px',
+          padding: '10px 20px',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          whiteSpace: 'nowrap',
+          animation: 'toastIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards',
+          pointerEvents: 'none',
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Page area */}
       <div className="page-area">
         {activeTab === 'entry' && (
-          <ExpenseEntry key="entry" categories={categories} onAdd={addTransaction} />
+          <ExpenseEntry key="entry" categories={categories} onAdd={handleAdd} />
         )}
         {activeTab === 'dashboard' && (
           <Dashboard key="dashboard" transactions={transactions} categories={categories} />
@@ -85,24 +137,18 @@ export default function App() {
           onClick={() => setActiveTab('entry')}
           style={{
             position: 'fixed',
-            bottom: '72px',
-            right: '20px',
+            bottom: '72px', right: '20px',
             width: '52px', height: '52px',
             borderRadius: '50%',
             background: 'var(--accent)',
             color: '#000',
             border: 'none',
-            fontSize: '1.5rem',
+            fontSize: '1.6rem',
             cursor: 'pointer',
-            boxShadow: '0 4px 20px var(--accent-glow)',
+            boxShadow: '0 4px 24px var(--accent-glow)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             zIndex: 50,
-            transition: 'transform 0.15s, box-shadow 0.15s',
           }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.92)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.92)'}
-          onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           +
         </button>
