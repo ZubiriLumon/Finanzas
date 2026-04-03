@@ -169,7 +169,7 @@ export default function Settings({ categories, setCategories, onImportTransactio
   }
 
   return (
-    <div className="page-content" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="page-content"><div className="page-inner" style={{ gap: '16px' }}>
 
       {/* API Key */}
       <div className="card">
@@ -459,6 +459,6 @@ export default function Settings({ categories, setCategories, onImportTransactio
       </div>
 
       <div style={{ height: '8px' }} />
-    </div>
+    </div></div>
   );
 }

@@ -125,7 +125,7 @@ export default function Dashboard({ transactions, categories }) {
       {showReport && (
         <MonthReport transactions={transactions} categories={categories} onClose={() => setShowReport(false)} />
       )}
-      <div className="page-content" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div className="page-content"><div className="page-inner" style={{ gap: '14px' }}>
 
         {/* Month navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
@@ -313,7 +313,7 @@ export default function Dashboard({ transactions, categories }) {
         )}
 
         <div style={{ height: '8px' }} />
-      </div>
+      </div></div>
     </>
   );
 }
